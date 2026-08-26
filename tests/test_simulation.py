@@ -127,8 +127,8 @@ class BB84SimulationTests(unittest.TestCase):
                 bob_bases
             )
 
-            aer_qbers.append(aer_results["true qber"])
-            fast_qbers.append(fast_results["true qber"])
+            aer_qbers.append(aer_results["true_qber"])
+            fast_qbers.append(fast_results["true_qber"])
 
         self.assertAlmostEqual(
                 np.mean(aer_qbers),
