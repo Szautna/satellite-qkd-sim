@@ -25,7 +25,7 @@ This model does not include a complete link budget, detector efficiency, backgro
 
 ## BB84 model
 
-For every transmitted photon, Alice chooses a random bit and one of the X or Z bases. Bob independently chooses a measurement basis. Eve uses the intercept-resend strategy: she measures each surviving photon in a randomly selected basis and resends the result in that basis.
+For every transmitted photon, Alice chooses a random bit and one of the X or Z bases. Bob independently chooses a measurement basis. Eve uses the intercept-resend strategy: she measures each photon represented in the BB84 stage in a randomly selected basis and resends the result in that basis. Eve's physical location is not modeled; optical loss is treated independently of the intercept-resend attack, so the model does not assign Eve an additional link budget or resend loss.
 
 The main implementation in `BB84_sim.py` uses NumPy arrays. If the relevant bases are compatible, the bit is preserved; otherwise the measurement result is represented by a random bit. This vectorized implementation is used for the main simulation because it is much faster than simulating one quantum circuit at a time.
 
