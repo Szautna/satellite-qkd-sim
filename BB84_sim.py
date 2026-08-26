@@ -76,7 +76,7 @@ def qkd_bb84_measure_aer(alice_bits,alice_bases,bob_bases,eve_bases=None):
             int(result.get_memory()[0])
         )
 
-    return bob_bits, eve_bits
+    return np.array(bob_bits), np.array(eve_bits)
 
 
 
