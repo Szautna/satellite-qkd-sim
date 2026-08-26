@@ -2,7 +2,12 @@ import unittest
 
 import numpy as np
 
-from BB84_sim import qkd_bb84_error, qkd_bb84_measure_fast
+from BB84_sim import (
+    qkd_bb84_init,
+    qkd_bb84_error,
+    qkd_bb84_measure_fast,
+    qkd_bb84_measure_aer,
+)
 from Channel import optical_channel
 from Main import run_simulation
 
@@ -78,6 +83,70 @@ class BB84SimulationTests(unittest.TestCase):
         self.assertEqual(len(result["received_photons"]), 2)
         self.assertIn("sample_qber", result)
         self.assertIn("actual_qber", result)
+
+    def test_aer_matches_fast_qber(self):
+
+        N = 500
+        N_TRIALS = 20
+
+        aer_qbers = []
+        fast_qbers = []
+
+        for _ in range(N_TRIALS):
+
+            alice_bits, alice_bases, bob_bases, eve_bases = qkd_bb84_init(
+                N,
+                True
+            )
+
+            bob_bits_aer, _ = qkd_bb84_measure_aer(
+                alice_bits,
+                alice_bases,
+                bob_bases,
+                eve_bases
+            )
+
+            aer_results = qkd_bb84_error(
+                alice_bits,
+                alice_bases,
+                bob_bits_aer,
+                bob_bases
+            )
+
+            bob_bits_fast, _ = qkd_bb84_measure_fast(
+                alice_bits,
+                alice_bases,
+                bob_bases,
+                eve_bases
+            )
+
+            fast_results = qkd_bb84_error(
+                alice_bits,
+                alice_bases,
+                bob_bits_fast,
+                bob_bases
+            )
+
+            aer_qbers.append(aer_results["true qber"])
+            fast_qbers.append(fast_results["true qber"])
+
+        self.assertAlmostEqual(
+                np.mean(aer_qbers),
+                np.mean(fast_qbers),
+                delta=0.05
+                )
+
+        self.assertAlmostEqual(
+                np.mean(aer_qbers),
+                0.25,
+                delta=0.05
+            )
+
+        self.assertAlmostEqual(
+                np.mean(fast_qbers),
+                0.25,
+                delta=0.05
+)
 
 
 if __name__ == "__main__":
