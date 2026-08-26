@@ -1,0 +1,5 @@
+numpy
+matplotlib
+skyfield
+qiskit
+qiskit-aer

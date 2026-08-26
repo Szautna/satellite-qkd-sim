@@ -1,24 +1,27 @@
 from qiskit import QuantumCircuit
-from secrets import choice
 from qiskit_aer import AerSimulator
-from random import SystemRandom
+import numpy as np
+
 simulator = AerSimulator()
 
+
 def qkd_bb84_init(N, eve):
-    alice_bits = [choice([0, 1]) for _ in range(N)]
-    alice_bases = [choice(["X", "Z"]) for _ in range(N)]
-    bob_bases = [choice(["X", "Z"]) for _ in range(N)]
+
+    alice_bits = np.random.randint(0, 2, N)
+
+    alice_bases = np.random.choice(["X", "Z"], N)
+
+    bob_bases = np.random.choice(["X", "Z"], N)
 
     if eve:
-        eve_bases = [choice(["X", "Z"]) for _ in range(N)]
+        eve_bases = np.random.choice(["X", "Z"], N)
     else:
         eve_bases = None
 
     return alice_bits, alice_bases, bob_bases, eve_bases
-
     
 
-def qkd_bb84_measure(alice_bits,alice_bases,bob_bases,eve_bases=None):
+def qkd_bb84_measure_aer(alice_bits,alice_bases,bob_bases,eve_bases=None):
     bob_bits = []
     eve_bits = []
 
@@ -75,74 +78,115 @@ def qkd_bb84_measure(alice_bits,alice_bases,bob_bases,eve_bases=None):
 
     return bob_bits, eve_bits
 
+
+
+def qkd_bb84_measure_fast(
+    alice_bits,
+    alice_bases,
+    bob_bases,
+    eve_bases=None
+):
+
+    N = len(alice_bits)
+
+    if eve_bases is None:
+
+        same_basis = bob_bases == alice_bases
+
+        random_bits = np.random.randint(0, 2, N)
+
+        bob_bits = np.where(
+            same_basis,
+            alice_bits,
+            random_bits
+        )
+
+        return bob_bits, np.array([])
+
+    # Eve measures Alice
+    eve_same_basis = eve_bases == alice_bases
+
+    eve_random_bits = np.random.randint(0, 2, N)
+
+    eve_bits = np.where(
+        eve_same_basis,
+        alice_bits,
+        eve_random_bits
+    )
+
+    # Bob measures Eve's resent state
+    bob_same_basis = bob_bases == eve_bases
+
+    bob_random_bits = np.random.randint(0, 2, N)
+
+    bob_bits = np.where(
+        bob_same_basis,
+        eve_bits,
+        bob_random_bits
+    )
+
+    return bob_bits, eve_bits
+
 def qkd_bb84_error(alice_bits, alice_bases, bob_bits, bob_bases):
     # Sifting
-    sifted_alice_bits = []
-    sifted_bob_bits = []
+    same_basis = alice_bases == bob_bases
 
-    for i in range(len(alice_bits)):
-        if alice_bases[i] == bob_bases[i]:
-            sifted_alice_bits.append(alice_bits[i])
-            sifted_bob_bits.append(bob_bits[i])
+    sifted_alice_bits = alice_bits[same_basis]
+    sifted_bob_bits = bob_bits[same_basis]
 
     #calculate estimated QBER
-    rng = SystemRandom()
-
     sample_size = int(len(sifted_alice_bits) * 0.2)
 
-    sample_indices = rng.sample(
-        range(len(sifted_alice_bits)),
-        sample_size
-    )
+    if sample_size > 0:
 
-    sample_errors = sum(
-        1 for i in sample_indices
-        if sifted_alice_bits[i] != sifted_bob_bits[i]
-    )
+        sample_indices = np.random.choice(
+            len(sifted_alice_bits),
+            sample_size,
+            replace=False
+        )
 
-    estimated_qber = (
-        sample_errors / sample_size
-        if sample_size > 0 else 0
-    )
+        estimated_qber = np.mean(
+            sifted_alice_bits[sample_indices]
+            != sifted_bob_bits[sample_indices]
+        )
+
+    else:
+        sample_indices = np.array([], dtype=int)
+        estimated_qber = 0
+
 
     # Discard publicly revealed sample
-    sample_set = set(sample_indices)
 
-    alice_key = [
-        bit for i, bit in enumerate(sifted_alice_bits)
-        if i not in sample_set
-    ]
+    keep = np.ones(len(sifted_alice_bits), dtype=bool)
+    keep[sample_indices] = False
 
-    bob_key = [
-        bit for i, bit in enumerate(sifted_bob_bits)
-        if i not in sample_set
-    ]
+    alice_key = sifted_alice_bits[keep]
+    bob_key = sifted_bob_bits[keep]
 
     # Calculate TRUE QBER
-    errors = sum(
-        1 for a, b in zip(sifted_alice_bits, sifted_bob_bits) if a != b
-    )
-    qber = errors / len(sifted_alice_bits) if sifted_alice_bits else 0
+    if len(sifted_alice_bits) > 0:
+        qber = np.mean(
+            sifted_alice_bits != sifted_bob_bits
+        )
+    else:
+        qber = 0
 
 
 
 
     return {
-        "sample qber": estimated_qber,
+        "sample_qber": estimated_qber,
         "sifted_alice_bits": sifted_alice_bits,
         "sifted_bob_bits": sifted_bob_bits,
-        "true qber": qber,
-        "alice_key": alice_key,     
+        "true_qber": qber,
+        "alice_key": alice_key,
         "bob_key": bob_key
     }
 
 
 def run_sim(N, eve=False):
-     alice_bits, alice_bases, bob_bases, eve_bases = qkd_bb84_init(N, eve)
-     bob_bits, eve_bits = qkd_bb84_measure(alice_bits, alice_bases, bob_bases, eve_bases)       
-     return qkd_bb84_error(alice_bits, alice_bases, bob_bits, bob_bases)
+    alice_bits, alice_bases, bob_bases, eve_bases = qkd_bb84_init(N, eve)
+    bob_bits, _ = qkd_bb84_measure_aer(alice_bits, alice_bases, bob_bases, eve_bases)
+    return qkd_bb84_error(alice_bits, alice_bases, bob_bits, bob_bases)
 
 
-
-run_sim(1000, False)
-run_sim(1000, True)

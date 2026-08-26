@@ -1,5 +1,6 @@
 from skyfield.api import load, wgs84
 from datetime import timedelta
+from pathlib import Path
 
 
 def load_iss_tle():
@@ -12,7 +13,13 @@ def load_iss_tle():
         "?GROUP=stations&FORMAT=tle"
     )
 
-    satellites = load.tle_file(stations_url, reload=True)
+    try:
+        satellites = load.tle_file(stations_url, reload=True)
+    except OSError:
+        satellites = load.tle_file(
+            str(Path(__file__).with_name("gp.php")),
+            reload=False
+        )
     by_name = {sat.name: sat for sat in satellites}
 
     satellite = by_name["ISS (ZARYA)"]

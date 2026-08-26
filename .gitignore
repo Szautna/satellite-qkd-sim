@@ -1,0 +1,22 @@
+# Virtual environments
+.venv/
+venv/
+BB84.venv/
+
+# Python cache and generated files
+__pycache__/
+*.py[cod]
+
+# Editor and local project files
+.vscode/
+.idea/
+
+# Local environment and secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Temporary files
+*.tmp
+*.log
